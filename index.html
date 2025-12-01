@@ -1,0 +1,25 @@
+<!doctype html><html lang="th"><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Login</title><link rel="stylesheet" href="style.css"></head><body>
+<div class="container"><div class="box"><div class="header"><h1>เข้าสู่ระบบ</h1></div>
+<div class="card">
+<label>ชื่อผู้ใช้</label><input id="u" placeholder="admin / ชื่อร้าน / ตัวเลขลูกค้า">
+<label>รหัสผ่าน</label><input id="p" type="password" placeholder="รหัสผ่าน">
+<div class="flex"><button class="btn" onclick="login()">เข้าสู่ระบบ</button></div>
+<p class="muted">Admin: admin / 3601 — ลูกค้า: ชื่อผู้ใช้เป็นตัวเลข 1000–10000 และรหัสต้องเป็นเลขเดียวกัน</p>
+</div></div></div>
+
+<script type="module">
+import { firebaseConfig } from './app-firebase.js';
+function login(){
+  const u=document.getElementById('u').value.trim();
+  const p=document.getElementById('p').value.trim();
+  if(!u||!p){ alert('กรอกให้ครบ'); return; }
+  if(u.toLowerCase()==='admin' && p==='3601'){ localStorage.setItem('role','admin'); location.href='admin.html'; return; }
+  const num = Number(u);
+  if(!isNaN(num) && num>=1000 && num<=10000 && p===String(num)){ localStorage.setItem('customerId', String(num)); location.href='customer.html'; return; }
+  const stores = JSON.parse(localStorage.getItem('stores')||'[]');
+  const store = stores.find(s=> (s.username||'').toLowerCase()===u.toLowerCase());
+  if(store && String(store.password)===p){ localStorage.setItem('vendorId', String(store.id)); location.href='vendor.html'; return; }
+  alert('ไม่พบผู้ใช้/รหัสผิด');
+}
+</script>
+</body></html>

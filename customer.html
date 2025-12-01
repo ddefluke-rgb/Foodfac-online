@@ -1,0 +1,37 @@
+<!doctype html><html lang="th"><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Customer</title><link rel="stylesheet" href="style.css"></head><body>
+<div class="container"><div class="box"><h1>ลูกค้า</h1><div id="notifyBox"></div>
+<div class="card"><label>เลือกร้าน</label><select id="sel" onchange="loadMenu()"></select></div>
+<h3>เมนู</h3><div id="menu"></div>
+<h3>ตะกร้าสินค้า</h3><div id="cartBox">ยังไม่มีสินค้า</div>
+<div class="flex" style="margin-top:12px"><button class="btn" onclick="openCheckout()">ชำระเงิน</button></div>
+<div id="checkoutBox" style="margin-top:12px"></div>
+<div id="receiptBox" style="display:none"></div></div></div>
+
+<script type="module">
+import { firebaseConfig } from './app-firebase.js';
+const script = document.createElement('script'); script.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'; document.head.appendChild(script);
+
+let cart=[];
+const stores = JSON.parse(localStorage.getItem('stores')||'[]');
+const sel = document.getElementById('sel'); sel.innerHTML = stores.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+function loadMenu(){ const id=Number(sel.value); const menus = JSON.parse(localStorage.getItem('menus_'+id) || '[]'); const box=document.getElementById('menu'); box.innerHTML=''; if(!menus.length){ box.innerHTML='<p class="muted">ร้านนี้ยังไม่มีเมนู</p>'; return; } menus.forEach(m=>{ const d=document.createElement('div'); d.className='card'; d.innerHTML=`<b>${m.name}</b><div class='muted'>${m.price} บาท</div><div style='margin-top:8px'><button class='small' onclick='addToCart(${id},${m.id})'>เพิ่มลงตะกร้า</button></div>`; box.appendChild(d); }); renderCart(); }
+window.addToCart=function(storeId, menuId){ const m = JSON.parse(localStorage.getItem('menus_'+storeId)||'[]').find(x=>x.id===menuId); if(!m) return; cart.push({storeId:storeId, name:m.name, price:m.price}); renderCart(); }
+function renderCart(){ const box=document.getElementById('cartBox'); if(!cart.length){ box.innerHTML='ยังไม่มีสินค้า'; return; } box.innerHTML = cart.map((c,i)=>`<div class='card'>${c.name} - ${c.price} บาท <button class='small' onclick='removeItem(${i})'>ลบ</button></div>`).join(''); }
+window.removeItem=function(i){ cart.splice(i,1); renderCart(); }
+
+window.openCheckout=function(){ if(!cart.length) return alert('ตะกร้าว่าง'); const id = cart[0].storeId; const store = JSON.parse(localStorage.getItem('stores')||'[]').find(s=>s.id===id); document.getElementById('checkoutBox').innerHTML = `<div class='card'><h3>ชำระเงินร้าน ${store.name}</h3><div class='flex'><button class='btn' onclick='payCash()'>จ่ายเงินสด</button><button class='btn' style='background:#0A66FF' onclick='showQR(${id})'>สแกน QR</button></div></div>`; }
+
+window.payCash=function(){ finishOrder(); }
+window.showQR=function(id){ const s = JSON.parse(localStorage.getItem('stores')||'[]').find(x=>x.id===id); if(!s || !s.qr) return alert('ร้านนี้ยังไม่มี QR'); document.getElementById('checkoutBox').innerHTML = `<div class='card'><h3>สแกนเพื่อชำระ</h3><img src='${s.qr}' style='max-width:260px;border-radius:10px'><div style='margin-top:12px'><button class='btn' onclick='finishOrder()'>ยืนยันว่าชำระแล้ว</button></div></div>`; }
+
+window.finishOrder=function(){ const id = cart[0].storeId; const itemsByStore = {}; cart.forEach(it=> (itemsByStore[it.storeId]=itemsByStore[it.storeId]||[]).push({name:it.name,price:it.price})); const receipts=[]; Object.keys(itemsByStore).forEach(sid=>{ const items = itemsByStore[sid]; const orders = JSON.parse(localStorage.getItem('orders_'+sid) || '[]'); const q = orders.length+1; const order = { id: Date.now(), queue: q, items: items, total: items.reduce((a,b)=>a+Number(b.price||0),0), status:'paid' }; orders.push(order); localStorage.setItem('orders_'+sid, JSON.stringify(orders)); receipts.push({storeId: Number(sid), order, items}); }); const r = receipts[0]; showReceipt(r.storeId, r.order, r.items); cart=[]; renderCart(); document.getElementById('checkoutBox').innerHTML=''; }
+
+function showReceipt(storeId, order, items){ const store = JSON.parse(localStorage.getItem('stores')||'[]').find(s=>s.id===storeId); const total = items.reduce((a,b)=>a+b.price,0); let html = `<div id='receipt' class='card'><h2>ใบเสร็จ</h2><div class='muted'><b>ร้าน:</b> ${store.name}</div><div class='muted'><b>เลขคิว:</b> ${order.queue}</div><hr>`; items.forEach(it=> html+=`<div class='receipt-item'><span>${it.name}</span><span>${it.price} บาท</span></div>`); html+=`<div class='total-line'>รวมทั้งหมด: ${total} บาท</div></div><br><div class='flex'><button class='btn' onclick='downloadReceiptPNG()'>ดาวน์โหลดใบเสร็จ (PNG)</button></div>`; const box=document.getElementById('receiptBox'); box.innerHTML = html; box.style.display='block'; }
+
+window.downloadReceiptPNG=function(){ const el = document.getElementById('receipt'); html2canvas(el,{scale:2}).then(canvas=>{ const link = document.createElement('a'); link.download = 'receipt.png'; link.href = canvas.toDataURL('image/png'); link.click(); try{ navigator.vibrate && navigator.vibrate(200); }catch(e){} }); }
+
+setInterval(()=>{ const n = localStorage.getItem('notify_customer'); if(!n) return; const store = JSON.parse(localStorage.getItem('stores')||'[]').find(s=>s.id===Number(n)); document.getElementById('notifyBox').innerHTML = `<div class='card'><b>ออเดอร์ร้าน ${store.name} เสร็จแล้ว!</b></div>`; try{ navigator.vibrate && navigator.vibrate([300,100,200]); }catch(e){} localStorage.removeItem('notify_customer'); },1000);
+
+document.addEventListener('DOMContentLoaded', loadMenu);
+</script>
+</body></html>

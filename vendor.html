@@ -1,0 +1,53 @@
+<!doctype html><html lang="th"><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Vendor</title><link rel="stylesheet" href="style.css"></head><body>
+<div class="container"><div class="box"><div class="header"><h1 id="title">ร้าน</h1></div>
+
+<div class="card">
+<label>อัปโหลด QR ชำระเงิน (.jpg .jpeg .png)</label>
+<input type="file" id="qrFile" accept=".jpg,.jpeg,image/*" onchange="uploadQR()">
+<div id="qrBox"></div>
+</div>
+
+<div class="card">
+<label>ชื่อเมนู</label><input id="menuName">
+<label>ราคา (บาท)</label><input id="menuPrice" type="number">
+<div class="flex"><button class="btn" onclick="addMenu()">เพิ่มเมนู</button></div>
+</div>
+
+<h3>เมนู</h3><div id="menuList"></div>
+<h3>ออเดอร์</h3><div id="orders"></div>
+<p class="muted"><a href="index.html">ออกจากระบบ</a></p>
+</div></div>
+
+<script type="module">
+const vid = Number(localStorage.getItem('vendorId')||0);
+const stores = JSON.parse(localStorage.getItem('stores')||'[]');
+const store = stores.find(s=>s.id===vid);
+if(!store){ alert('กรุณาล็อกอิน'); location.href='index.html'; }
+document.getElementById('title').innerText = 'ร้าน: ' + store.name;
+
+function saveStores(s){ localStorage.setItem('stores', JSON.stringify(s)); }
+function getMenus(id){ return JSON.parse(localStorage.getItem('menus_'+id) || '[]'); }
+function saveMenus(id, m){ localStorage.setItem('menus_'+id, JSON.stringify(m)); }
+function getOrders(id){ return JSON.parse(localStorage.getItem('orders_'+id) || '[]'); }
+function saveOrders(id,o){ localStorage.setItem('orders_'+id, JSON.stringify(o)); }
+
+window.uploadQR = function(){
+  const f = document.getElementById('qrFile').files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = e=>{
+    const s = JSON.parse(localStorage.getItem('stores')||'[]'); const idx = s.findIndex(x=>x.id===vid); if(idx>=0){ s[idx].qr = e.target.result; saveStores(s); loadQR(); }
+  }; r.readAsDataURL(f);
+}
+
+window.loadQR = function(){ const s = JSON.parse(localStorage.getItem('stores')||'[]').find(x=>x.id===vid); qrBox.innerHTML = s && s.qr ? `<img src="${s.qr}">` : '<p class="muted">ยังไม่มี QR</p>'; }
+
+window.addMenu = function(){ const n=document.getElementById('menuName').value.trim(); const p=Number(document.getElementById('menuPrice').value)||0; if(!n) return alert('กรอกชื่อเมนู'); const m=getMenus(vid); m.push({id:Date.now(),name:n,price:p}); saveMenus(vid,m); document.getElementById('menuName').value=''; document.getElementById('menuPrice').value=''; renderMenus(); }
+window.renderMenus = function(){ const list=getMenus(vid); menuList.innerHTML=''; if(!list.length){ menuList.innerHTML='<p class="muted">ยังไม่มีเมนู</p>'; return; } list.forEach(m=>{ const d=document.createElement('div'); d.className='card'; d.innerHTML = `<b>${m.name}</b><div class='muted'>${m.price} บาท</div><div style='margin-top:8px'><button class='small' onclick='delMenu(${m.id})'>ลบ</button></div>`; menuList.appendChild(d); }); }
+window.delMenu = function(id){ saveMenus(vid, getMenus(vid).filter(x=>x.id!==id)); renderMenus(); }
+
+window.renderOrders = function(){ const box=document.getElementById('orders'); box.innerHTML=''; const orders=getOrders(vid)||[]; if(!orders.length){ box.innerHTML='<p class="muted">ยังไม่มีออเดอร์</p>'; return; } orders.slice().reverse().forEach(o=>{ const d=document.createElement('div'); d.className='card'; d.innerHTML = `<b>คิวที่ ${o.queue}</b><br>รายการ: ${o.items.map(it=>it.name).join(', ')}<br>รวม: ${o.total} บาท<br>สถานะ: ${o.status}<br><div style='margin-top:8px'><button class='small' onclick='complete(${o.id})'>ทำเสร็จแล้ว</button></div>`; box.appendChild(d); }); }
+
+window.complete = function(id){ const orders=getOrders(vid); const idx=orders.findIndex(x=>x.id===id); if(idx===-1) return; orders[idx].status='completed'; saveOrders(vid, orders); localStorage.setItem('notify_customer', String(vid)); try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch(e){} renderOrders(); }
+
+document.addEventListener('DOMContentLoaded', ()=>{ loadQR(); renderMenus(); renderOrders(); setInterval(renderOrders,2000); });
+</script>
+</body></html>

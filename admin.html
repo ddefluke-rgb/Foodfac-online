@@ -1,0 +1,22 @@
+<!doctype html><html lang="th"><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Admin</title><link rel="stylesheet" href="style.css"></head><body>
+<div class="container"><div class="box"><div class="header"><h1>แผงผู้ดูแล</h1></div>
+<div class="card">
+<label>ชื่อร้าน</label><input id="name" placeholder="ชื่อร้าน">
+<label>username (แม่ค้า)</label><input id="username" placeholder="เช่น store1">
+<label>password (แม่ค้า)</label><input id="password" placeholder="เช่น 1234">
+<label>prefix คิว</label><input id="prefix" placeholder="เช่น Q">
+<div class="flex"><button class="btn" onclick="addStore()">เพิ่มร้าน</button></div>
+</div>
+<h3>ร้านทั้งหมด</h3><div id="stores"></div><p class="muted"><a href="index.html">ออกจากระบบ</a></p>
+</div></div>
+
+<script type="module">
+function getStores(){ return JSON.parse(localStorage.getItem('stores')||'[]'); }
+function saveStores(s){ localStorage.setItem('stores', JSON.stringify(s)); }
+function render(){ const box=document.getElementById('stores'); box.innerHTML=''; const s=getStores(); if(!s.length){ box.innerHTML='<p class="muted">ยังไม่มีร้าน</p>'; return; } s.forEach(st=>{ const d=document.createElement('div'); d.className='card'; d.innerHTML = `<b>${st.name}</b><div class='muted'>user: ${st.username} | prefix: ${st.prefix||'Q'}</div><div style='margin-top:8px'><button class='small' onclick='openVendor(${st.id})'>เข้าสู่ร้าน</button> <button class='small' style='background:#ff4747' onclick='del(${st.id})'>ลบ</button></div>`; box.appendChild(d); }); }
+window.addStore = function(){ const name=document.getElementById('name').value.trim(); const username=document.getElementById('username').value.trim(); const password=document.getElementById('password').value.trim(); const prefix=document.getElementById('prefix').value.trim()||'Q'; if(!name||!username||!password) return alert('กรอกให้ครบ'); const stores=getStores(); const id=Date.now(); stores.push({id:id,name,username,password,prefix,qr:null}); saveStores(stores); document.getElementById('name').value='';document.getElementById('username').value='';document.getElementById('password').value='';document.getElementById('prefix').value=''; render(); }
+window.del = function(id){ if(!confirm('ลบร้าน?')) return; let s=getStores(); s=s.filter(x=>x.id!==id); saveStores(s); render(); }
+window.openVendor = function(id){ localStorage.setItem('vendorId', String(id)); location.href='vendor.html'; }
+document.addEventListener('DOMContentLoaded', render);
+</script>
+</body></html>

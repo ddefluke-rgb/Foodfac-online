@@ -1,0 +1,9 @@
+<!doctype html><html lang="th"><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Monitor</title><link rel="stylesheet" href="style.css"></head><body>
+<div class="container"><div class="box"><div class="header"><h1>จอแสดงคิว (Monitor)</h1><div><button class="btn" onclick="toggleFull()">เต็มจอ</button></div></div>
+<div id="grid" class="grid"></div></div></div>
+<script type="module">
+function render(){ const g=document.getElementById('grid'); g.innerHTML=''; const stores = JSON.parse(localStorage.getItem('stores')||'[]'); stores.forEach(s=>{ const orders = JSON.parse(localStorage.getItem('orders_'+s.id)||'[]'); const pending = orders.filter(o=>o.status==='pending' || o.status==='paid'); const next = pending.length? pending.reduce((a,b)=> a.queue<b.queue? a:b) : null; const el = document.createElement('div'); el.className='card'; el.innerHTML = `<h3>${s.name}</h3><div class='muted'>คิวถัดไป:</div><h1 style='font-size:48px'>${next? next.queue : '-'}</h1>`; g.appendChild(el); }); }
+function toggleFull(){ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+setInterval(render,1200); document.addEventListener('DOMContentLoaded', render);
+</script>
+</body></html>
